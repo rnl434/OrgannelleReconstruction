@@ -8,6 +8,9 @@ from scipy.optimize import curve_fit
 from tqdm import tqdm
 import scipy.stats as stats
 import re
+import yaml         # Config file reader
+
+
 
 # Import cycler
 from cycler import cycler

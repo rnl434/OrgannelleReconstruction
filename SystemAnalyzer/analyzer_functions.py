@@ -8,49 +8,37 @@ def get_path(main_path="/home/danie/erda", sub_path=""):
     """Returns the directory of a subfolder"""
     return os.path.join(main_path, sub_path)
 
-def load_npy(dir, fname, verbose=True):
-    path = os.path.join(dir, fname)
+def load_npy(fname, verbose=False):
     if verbose:
-        print(f"Loading Data from: {path}")
-    data = np.load(path)
+        print(f"Loading Data from: {fname}")
+    data = np.load(fname)
     return data
 
 def get_max_frame(calm_dir):
     """Finds the last frame in a given CALM directory"""
-    max_frame = -1
-    for f in os.listdir(calm_dir):
-        m = re.match(r"curvature_frame_(\d+)_", f)
-        if m:
-            frame = int(m.group(1))
-            max_frame = max(max_frame, frame)
-
-    return max_frame
+    frame_names = get_CALM_frame_names(calm_dir, filter="mean") # We can use any filter here, since we just want to know the number of frames, and all files should have the same number of frames
+    return len(frame_names)
 
 
-def load_dat(dir, fname, verbose=True):
-    path = os.path.join(dir, fname)
+def load_dat(fname, verbose=False):
     if verbose:
-        print(f"Loading Data from: {path}")
-    data = np.loadtxt(path)
+        print(f"Loading Data from: {fname}")
+    data = np.loadtxt(fname)
     return data
 
-def load_mda_universe(dir, fname_gro, fname_xtc):
+def load_mda_universe(fname_gro, fname_xtc):
     """Function for simplifying the load of an mda universe. 
     Provide a path to a topology file (.gro works) and trajectory file (.xtc works)"""
-    path_gro = os.path.join(dir, fname_gro)
-    path_xtc = os.path.join(dir, fname_xtc)
-    
-    system = mda.Universe(path_gro, path_xtc, in_memory=False)
+    system = mda.Universe(fname_gro, fname_xtc, in_memory=False)
     return system
 
-def load_CALM_dimensions(dim_fname, calm_dir):
+def load_CALM_dimensions(dim_fname):
     """Small function for loading the dimensions.csv file.
     This both contains the changing boxsizes but also which frames have been analyzed.
     RETURNS:
     trj_idxs: The indexes for the trajectory
     boxsizes: a list of the boxsizes for each frame"""
-    file = os.path.join(calm_dir, dim_fname)
-    data_raw = pd.read_csv(file, delimiter=",", skiprows=1, header=None)         # Box size now contains the boundary for each frame 
+    data_raw = pd.read_csv(dim_fname, delimiter=",", skiprows=1, header=None)         # Box size now contains the boundary for each frame 
                                                                                      # AND also contains the frame indexes which is very nice
     data_raw.columns = ["trajectory_idx", "x", "y", "z"] # Rename the columns for easier access
     trj_idxs = data_raw["trajectory_idx"].values - 1 # Mapping from 1-based to 0-based indexing
@@ -68,7 +56,7 @@ def get_CALM_frame_names(calm_dir, filter):
     frame_names = set()
     for file in files:
         if file.endswith(".npy") and filter in file:
-            frame_names.add(file)
+            frame_names.add(os.path.join(calm_dir, file))
     return sorted(list(frame_names))
 
 
@@ -82,13 +70,11 @@ def pos_to_curvature(curvature, positions, boxsize):
     return curv_lipid
 
 
-def load_xvg_file(fname, data_path="C:\\WSL\\Data\\", curr_run="Isa_shape_9010\\",\
-                   subfolder_path="analysis_files\\"):
+def load_xvg_file(fname):
     """A simple function for loading .xvg files. Loads the data from the analysis_files folder by default, 
     so the only thing we need to change is the specific run from which we then have acccess to all the different .xvg files. 
     Returns a 2D array with the x and y data."""
-    path = data_path + curr_run + subfolder_path
-    data = np.loadtxt(path + fname, comments=['@', '#'])
+    data = np.loadtxt(fname, comments=['@', '#'])
     x, y = data.T
 
 
@@ -115,11 +101,10 @@ def plot_raw_file(fname, path, title, xlabel, ylabel, color='blue', xlim=None, y
 
 
 
-def load_leaflets_idx(dir, fname):
+def load_leaflets_idx(fname):
     """Loads the leaflet.ndx file and returns a dictionary with the leaflet names as keys and the indices as values"""
-    path = os.path.join(dir, fname)
-    print(f"Loading Leaflets from: {path}")
-    with open(path, 'r') as f:
+    print(f"Loading Leaflets from: {fname}")
+    with open(fname, 'r') as f:
         lines = f.readlines()
     
     leaflet_dict = {}
